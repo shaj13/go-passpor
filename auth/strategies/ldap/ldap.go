@@ -150,10 +150,24 @@ func New(cfg *Config, opts ...auth.Option) auth.Strategy {
 	return basic.New(fn, opts...)
 }
 
-// NewCached return strategy authenticate request using LDAP.
-// The returned strategy, caches the authentication decision.
-// New is similar to Basic.NewCached().
+// Add new type
+type CachedLDAP struct {
+	auth.Strategy
+	cache auth.Cache
+}
+
+// Implement token.Revokable interface
+func (c *CachedLDAP) Revoke(hash string) error {
+	c.cache.Delete(hash)
+	return nil
+}
+
+// Update NewCached to return our new type
 func NewCached(cfg *Config, c auth.Cache, opts ...auth.Option) auth.Strategy {
 	fn := GetAuthenticateFunc(cfg, opts...)
-	return basic.NewCached(fn, c, opts...)
+	strategy := basic.NewCached(fn, c, opts...)
+	return &CachedLDAP{
+		Strategy: strategy,
+		cache:    c,
+	}
 }
